@@ -268,6 +268,52 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isButton() && interaction.customId.startsWith("role:")) {
+    const roleName = interaction.customId.slice("role:".length);
+    const role = interaction.guild?.roles.cache.find(
+      (guildRole) => guildRole.name === roleName
+    );
+
+    if (!role) {
+      await interaction.reply({
+        content: `❌ I could not find the **${roleName}** role. Ask staff to run the server setup again.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    try {
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      const hasRole = member.roles.cache.has(role.id);
+
+      if (hasRole) {
+        await member.roles.remove(role);
+        await interaction.reply({
+          content: `🔕 **${roleName}** alerts removed.`,
+          flags: MessageFlags.Ephemeral,
+        });
+      } else {
+        await member.roles.add(role);
+        await interaction.reply({
+          content: `🔔 **${roleName}** alerts enabled.`,
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    } catch (error) {
+      console.error("❌ Role toggle failed:", error);
+
+      if (!interaction.replied) {
+        await interaction.reply({
+          content:
+            "❌ I could not update that role. Make sure the PokéDaé Intelligence bot role is above the alert roles and has Manage Roles permission.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    }
+
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName !== "alert") return;
 
